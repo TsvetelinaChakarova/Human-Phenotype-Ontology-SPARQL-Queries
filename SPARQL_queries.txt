@@ -1,0 +1,221 @@
+1. Заявка, показваща фенотипните аномалии (фенотиповете)
+
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX obo: <http://purl.obolibrary.org/obo/>
+
+SELECT ?phenotype ?phenotypeLabel
+WHERE {
+  ?phenotype rdfs:subClassOf obo:HP_0000118 ;
+             rdfs:label ?phenotypeLabel .
+}
+
+
+2. Заявка, показваща всички свойства от тип owl:ObjectProperty
+
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?property ?propertyLabel
+WHERE {
+  ?property rdf:type owl:ObjectProperty .
+  OPTIONAL { ?property rdfs:label ?propertyLabel }
+} 
+
+
+3. Заявка, показваща всички свойства, които са едновременно от типовете owl:ObjectProperty, owl:SymmetricProeprty и owl:TransitiveProperty
+
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?property ?propertyLabel
+WHERE {
+  ?property rdf:type owl:ObjectProperty ;
+ 	    rdf:type owl:SymmetricProperty ;
+    	    rdf:type owl:TransitiveProperty .
+  OPTIONAL { ?property rdfs:label ?propertyLabel }
+}
+
+
+4. Заявка за търсене по една ключова дума, показваща всички фенотипове, съдържащи “heart”
+
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?phenotype ?phenotypeLabel
+WHERE {
+  	
+  FILTER(CONTAINS(LCASE(?phenotypeLabel), "heart"))
+}
+ORDER BY ?phenotypeLabel
+	
+
+
+5. Заявка за търсене по две ключови думи, свързани с логическо “И”, показваща всички фенотипове, съдържащи едновременно “abnormal” и “heart”
+
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?phenotype ?phenotypeLabel
+WHERE {
+  ?phenotype rdfs:label ?phenotypeLabel .
+  FILTER(
+    CONTAINS(LCASE(?phenotypeLabel), "abnormal") &&
+    CONTAINS(LCASE(?phenotypeLabel), "heart")
+  )
+}
+ORDER BY ?phenotypeLabel
+
+
+6. Заявка за търсене по ключови думи с комбинирана логика - логическо “И” и логическо “ИЛИ”, показваща всички фенотипове, съдържащи едновременно (“abnormal” и “heart”) или (“abnormal” и “cardiac”)
+
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?phenotype ?phenotypeLabel
+WHERE {
+  ?phenotype rdfs:label ?phenotypeLabel .
+  FILTER(
+    CONTAINS(LCASE(?phenotypeLabel), "abnormal") &&
+    (CONTAINS(LCASE(?phenotypeLabel), "heart") || CONTAINS(LCASE(?phenotypeLabel), "cardiac"))
+  )
+}
+
+
+7. Заявка за търсене по ключови думи, която категоризира и сортира намерените фенотипове по броя на съдържащите се в тях ключови думи
+
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?phenotype ?phenotypeLabel ?matchType
+WHERE {
+  ?phenotype rdfs:label ?phenotypeLabel .
+  
+  BIND(
+    (IF(CONTAINS(LCASE(?phenotypeLabel), "cardiac"), 1, 0) +
+     IF(CONTAINS(LCASE(?phenotypeLabel), "muscle"), 1, 0) +
+     IF(CONTAINS(LCASE(?phenotypeLabel), "contraction"), 1, 0))
+    AS ?matchCount
+  )
+  
+  BIND(
+    IF(?matchCount = 3, "High Match",
+    IF(?matchCount = 2, "Medium Match", 
+    IF(?matchCount = 1, "Low Match", "No Match")))
+    AS ?matchType
+  )
+  
+  FILTER(?matchCount > 0)
+}
+ORDER BY DESC(?matchCount)
+
+
+8. Заявка, обединяваща неврологични и мускулни аномалии
+
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX obo: <http://purl.obolibrary.org/obo/>
+
+SELECT DISTINCT ?phenotype ?phenotypeLabel ?category
+WHERE {
+  {
+    ?phenotype rdfs:subClassOf obo:HP_0000707 ;
+               rdfs:label ?phenotypeLabel .
+    BIND("Neurological" AS ?category)
+  }
+  UNION
+  {
+    ?phenotype rdfs:subClassOf obo:HP_0003011 ;
+               rdfs:label ?phenotypeLabel .
+    BIND("Muscular" AS ?category)
+  }
+}
+ORDER BY ?category ?phenotypeLabel
+
+
+9. Заявка, извеждаща аномалиите, които са едновременно мускулни и неврологични
+
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX obo: <http://purl.obolibrary.org/obo/>
+
+SELECT DISTINCT ?phenotype ?phenotypeLabel
+WHERE {
+  ?phenotype rdfs:subClassOf obo:HP_0003011 ;
+             rdfs:label ?phenotypeLabel .
+  
+  FILTER EXISTS {
+    ?phenotype rdfs:subClassOf obo:HP_0000707 .
+  }
+}
+ORDER BY ?phenotypeLabel
+
+
+10. Заявка, извеждаща аномалиите, които са мускулни
+
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX obo: <http://purl.obolibrary.org/obo/>
+SELECT ?phenotype ?phenotypeLabel
+WHERE {
+  ?phenotype rdfs:subClassOf obo:HP_0003011 ;
+             rdfs:label ?phenotypeLabel .
+}
+ORDER BY ?phenotypeLabel
+
+
+11. Заявка, извеждаща аномалиите, които са мускулни, но не са неврологични
+
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX obo: <http://purl.obolibrary.org/obo/>
+SELECT ?phenotype ?phenotypeLabel
+WHERE {
+  ?phenotype rdfs:subClassOf obo:HP_0003011 ;
+             rdfs:label ?phenotypeLabel .
+  
+  FILTER NOT EXISTS {
+    ?phenotype rdfs:subClassOf obo:HP_0000707 .
+  }
+
+}
+ORDER BY ?phenotypeLabel
+
+
+
+12. Заявка, извеждаща всички фенотипове, които имат дефиниции, съдържащи “noise”	
+
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX obo: <http://purl.obolibrary.org/obo/>
+
+SELECT ?phenotype ?phenotypeLabel ?phenotypeDefinition
+WHERE {
+  ?phenotype rdfs:subClassOf obo:HP_0000118 ;
+  	     rdfs:label ?phenotypeLabel ;
+             obo:IAO_0000115 ?phenotypeDefinition .
+  FILTER(CONTAINS(LCASE(?phenotypeDefinition), "noise"))
+}
+ORDER BY ?phenotypeLabel
+
+
+13. Заявка, извеждаща всички фенотипове, които имат коментари
+
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX obo: <http://purl.obolibrary.org/obo/>
+
+SELECT ?phenotype ?phenotypeLabel ?phenotypeComment
+WHERE {
+  ?phenotype rdfs:subClassOf obo:HP_0000118 ;
+  	     rdfs:label ?phenotypeLabel ;
+             rdfs:comment ?phenotypeComment .
+}
+ORDER BY ?phenotypeLabel
+
+
+14. Заявка, извеждаща фенотиповете, които имат свойство has part
+
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX obo: <http://purl.obolibrary.org/obo/>
+
+SELECT DISTINCT ?phenotype ?phenotypeLabel
+WHERE {
+  ?phenotype rdfs:label ?phenotypeLabel ;
+             rdfs:subClassOf ?owlRestriction .
+  ?owlRestriction owl:onProperty obo:BFO_0000051 ;
+                  owl:someValuesFrom ?restrictionValue .
+}
+ORDER BY ?phenotypeLabel
